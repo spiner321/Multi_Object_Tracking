@@ -1,0 +1,9 @@
+[submodule "yolov5"]
+	path = yolov5
+	url = https://github.com/ultralytics/yolov5.git
+[submodule "OpenPCDet"]
+	path = OpenPCDet
+	url = https://github.com/open-mmlab/OpenPCDet.git
+[submodule "DeepFusionMOT"]
+	path = DeepFusionMOT
+	url = https://github.com/wangxiyang2022/DeepFusionMOT.git
