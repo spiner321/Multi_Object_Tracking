@@ -1,2 +1,1 @@
-labeling_tool/
-vision_and_calibration/
+labeling_tool
