@@ -41,7 +41,8 @@ class Kitti2DBox(_BaseDataset):
             'TRACKERS_FOLDER': '/data/NIA50/50-2/data/NIA50/train_1st/trackeval/trackers',  # Trackers location
             'OUTPUT_FOLDER': '/data/NIA50/50-2/models/TrackEval/results',  # Where to save eval results (if None, same as TRACKERS_FOLDER)
             'TRACKERS_TO_EVAL': None,  # Filenames of trackers to eval (if None, all in folder)
-            'CLASSES_TO_EVAL': ['car', 'two_wheeler', 'adult', 'kid', 'suv', 'van'],  # Valid: ['car', 'pedestrian']
+            # 'CLASSES_TO_EVAL': ['car', 'two_wheeler', 'adult', 'kid', 'suv', 'van'],  # Valid: ['car', 'pedestrian']
+            'CLASSES_TO_EVAL': ['car', 'suv_&_van', 'truck', 'bus', 'special_vehicle', 'two_wheeler', 'person', 'none'],
             'SPLIT_TO_EVAL': 'training',  # Valid: 'training', 'val', 'training_minus_val', 'test'
             'INPUT_AS_ZIP': False,  # Whether tracker input files are zipped
             'PRINT_CONFIG': True,  # Whether to print current config
@@ -74,14 +75,15 @@ class Kitti2DBox(_BaseDataset):
         self.min_height = 25
 
         # Get classes to eval
-        self.valid_classes = ['car', 'two_wheeler', 'adult', 'kid', 'suv', 'van']
+        self.valid_classes = ['car', 'suv_&_van', 'truck', 'bus', 'special_vehicle', 'two_wheeler', 'person', 'none']
         self.class_list = [cls.lower() if cls.lower() in self.valid_classes else None
                            for cls in self.config['CLASSES_TO_EVAL']]
         if not all(self.class_list):
             raise TrackEvalException('Attempted to evaluate an invalid class. Only classes [car, pedestrian] are valid.')
         # self.class_name_to_class_id = {'car': 1, 'van': 2, 'truck': 3, 'pedestrian': 4, 'person': 5,  # person sitting
         #                                'cyclist': 6, 'tram': 7, 'misc': 8, 'dontcare': 9, 'car_2': 1}
-        self.class_name_to_class_id = {'car': 1, 'two_wheeler': 2, 'adult': 3, 'kid': 4, 'suv': 5, 'van': 6}
+        # self.class_name_to_class_id = {'car': 1, 'two_wheeler': 2, 'adult': 3, 'kid': 4, 'suv': 5, 'van': 6}
+        self.class_name_to_class_id = {'car': 1, 'suv_&_van': 2, 'truck': 3, 'bus': 4, 'special_vehicle': 5, 'two_wheeler': 6, 'person': 7, 'none': 8}
 
         # Get sequences to eval and check gt files exist
         self.seq_list = []
@@ -295,9 +297,23 @@ class Kitti2DBox(_BaseDataset):
         #     distractor_classes = [self.class_name_to_class_id['dontcare'], self.class_name_to_class_id['person']]
         # elif cls == 'car':
         #     distractor_classes = [self.class_name_to_class_id['van']]
-        # elif cls == 'cyclist':
-        #     distractor_classes = [self.class_name_to_class_id['dontcare']]
-        distractor_classes = 0
+        # if cls == 'car':
+        #     distractor_classes = [2, 3, 4, 5, 6, 7, 8]
+        # elif cls == 'suv_&_van':
+        #     distractor_classes = [1, 3, 4 ,5, 6, 7, 8]        
+        # elif cls == 'truck':
+        #     distractor_classes = [1, 2, 4, 5, 6, 7, 8]
+        # elif cls == 'bus':
+        #     distractor_classes = [1, 2, 3, 5, 6, 7, 8]
+        # elif cls == 'speical_vehicle':
+        #     distractor_classes = [1, 2, 3, 4, 6, 7, 8]
+        # elif cls == 'two_wheeler':
+        #     distractor_classes = [1, 2, 3, 4, 5, 7, 8]
+        # elif cls == 'person':
+        #     distractor_classes = [1, 2, 3, 4, 5, 6, 8]
+        # else:
+        #     distractor_classes = [1, 2, 3, 4, 5, 6, 7]
+        distractor_classes = [0]
         # else:
         #     raise (TrackEvalException('Class %s is not evaluatable' % cls))
         cls_id = self.class_name_to_class_id[cls]

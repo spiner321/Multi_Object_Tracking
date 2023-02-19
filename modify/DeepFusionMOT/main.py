@@ -12,6 +12,20 @@ from datasets.coordinate_transformation import convert_3dbox_to_8corner, convert
 from visualization.visualization_3d import show_image_with_boxes
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--data-root', type=str, default='datasets/kitti/train', help='dataset path')
+parser.add_argument('--detections3D', type=str, default='3D_pointrcnn_Car_val', help='detections 3D foldername')
+parser.add_argument('--detections2D', type=str, default='2D_rrc_Car_val', help='detections 2D foldername')
+parser.add_argument('--save-root', type=str, default='results/train', help='result save path')
+parser.add_argument('--save-img', action='store_true', help='save image')
+args = parser.parse_args()
+
+# data_root = 'datasets/kitti/train'
+# detections_name_3D = '3D_pointrcnn_Car_val'
+# detections_name_2D = '2D_rrc_Car_val'
+
+
 
 def is_image_file(filename):
     return any(filename.endswith(extension) for extension in ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG'])
@@ -62,6 +76,7 @@ class DeepFusion(object):
         self.tracker.predict_2d()
         self.tracker.predict_3d()
         self.tracker.update(detection_3D_fusion, detection_3D_only, detection_3Dto2D_only, detection_2D_only, calib_file, iou_threshold=0.5)
+        # self.tracker.update(detection_3D_fusion, detection_3D_only, detection_3Dto2D_only, detection_2D_only, calib_file, iou_threshold=0.01)
 
         self.frame_count += 1
         outputs = []
@@ -105,9 +120,9 @@ if __name__ == '__main__':
     # data_root = 'datasets/kitti/train'
     # detections_name_3D = '3D_pointrcnn_Car_val'
     # detections_name_2D = '2D_rrc_Car_val'
-    data_root = '/data/NIA50/50-2/data/NIA50/train_1st/deepfusionmot'
-    detections_name_3D = '3D_pvrcnn'
-    detections_name_2D = '2D_yolov5'
+    data_root = args.data_root
+    detections_name_3D = args.detections3D
+    detections_name_2D = args.detections2D
 
     # Define the file path
     # calib_root = os.path.join(data_root, 'calib_train')
@@ -119,22 +134,39 @@ if __name__ == '__main__':
 
     # Define the file path of results.
     # save_root = 'results/train'   # The root directory where the result is saved
-    save_root = 'results/nia50_train1st'
+    save_root = args.save_root
     txt_path_0 = os.path.join(save_root, 'data'); mkdir_if_inexistence(txt_path_0)
     image_path_0 = os.path.join(save_root, 'image'); mkdir_if_inexistence(image_path_0)
     # Open file to save in list.
     # det_id2str = {1: 'Pedestrian', 2: 'Car', 3: 'Cyclist'}
-    det_id2str = {1: 'Car', 2: 'Two_Wheeler', 3: 'Adult', 4: 'Kid', 5: 'SUV', 6: 'Van'}
+    # det_id2str = {1: 'Car', 2: 'Two_Wheeler', 3: 'Adult', 4: 'Kid', 5: 'SUV', 6: 'Van'}
+    det_id2str = {1: 'Car', 2: 'SUV_&_Van', 3: 'Truck', 4: 'Bus', 5: 'Special_Vehicle', 6: 'Two_Wheeler', 7: 'Person'}
+    # det_id2str = {1: 'Small_Car',
+    #                 2: 'Light_Car',
+    #                 3: 'Car',
+    #                 4: 'Van',
+    #                 5: 'SUV',
+    #                 6: 'Small_Truck',
+    #                 7: 'Medium_Truck',
+    #                 8: 'Large_Truck',
+    #                 9: 'Mini_Bus',
+    #                 10: 'Bus',
+    #                 11: 'Special_Vehicle',
+    #                 12: 'Two_Wheeler',
+    #                 13: 'Kickboard',
+    #                 14: 'Adult',
+    #                 15: 'Kid'}
     calib_files = os.listdir(calib_root)
     detections_files_3D = sorted(os.listdir(detections_root_3D))
     detections_files_2D = sorted(os.listdir(detections_root_2D))
     image_files = sorted(os.listdir(dataset_dir))
     detection_file_list_3D, num_seq_3D = load_list_from_folder(detections_files_3D, detections_root_3D)
+    # print(detection_file_list_3D)
     detection_file_list_2D, num_seq_2D = load_list_from_folder(detections_files_2D, detections_root_2D)
     image_file_list, _ = load_list_from_folder(image_files, dataset_dir)
 
     total_time, total_frames, i = 0.0, 0, 0  # Tracker runtime, total frames and Serial number of the dataset
-    tracker = DeepFusion(max_age=25, min_hits=1)  # Tracker initialization
+    tracker = DeepFusion(max_age=40, min_hits=1)  # Tracker initialization
 
     # Iterate through each data set
     for seq_file_3D, image_filename in zip(detection_file_list_3D, image_files):
@@ -152,9 +184,15 @@ if __name__ == '__main__':
         seq_dets_3D = np.loadtxt(seq_file_3D, delimiter=',')  # load 3D detections, N x 15
         seq_dets_2D = np.loadtxt(seq_file_2D, delimiter=',')  # load 2D detections, N x 6
 
-        min_frame, max_frame = int(seq_dets_3D[:, 0].min()), len(image_filenames)
+        # min_frame, max_frame = int(seq_dets_3D[:, 0].min()), len(image_filenames)
+        select_frames = list(set(seq_dets_3D[:, 0].astype(int).flatten().tolist()))
+        image_filenames = np.asarray(image_filenames)[select_frames]
+        # print(select_frames)
+        # print(np.asarray(image_filenames))
+        # print(image_filenames)
 
-        for frame, img0_path in zip(range(min_frame, max_frame + 1), image_filenames):
+        # for frame, img0_path in zip(range(min_frame, max_frame + 1), image_filenames):
+        for frame, img0_path in zip(select_frames, image_filenames):
             # print(img0_path)
             img_0 = cv2.imread(img0_path)
             _, img0_name, _ = fileparts(img0_path)
@@ -166,19 +204,31 @@ if __name__ == '__main__':
             additional_info = np.concatenate((ori_array, other_array), axis=1)
 
             dets_3Dto2D_image = seq_dets_3D[seq_dets_3D[:, 0] == frame, 2:6]
-            dets_2D = seq_dets_2D[seq_dets_2D[:, 0] == frame, 1:5]   # 2D bounding box(x1,y1,x2,y2)
+            # print(seq_dets_2D.shape)
+            # dets_2D = seq_dets_2D[seq_dets_2D[:, 0] == frame, 1:5]   # 2D bounding box(x1,y1,x2,y2)
+            dets_2D = seq_dets_2D[seq_dets_2D[:, 0] == frame, 1:6]   # 2D bounding box(class, x1,y1,x2,y2)
 
             # Data Fusion(3D and 2D detections)
-            detection_2D_fusion, detection_3Dto2D_fusion, detection_3D_fusion, detection_2D_only, detection_3Dto2D_only, detection_3D_only = \
-                datafusion2Dand3D(dets_3D_camera, dets_2D, dets_3Dto2D_image, additional_info)
-
+            # detection_2D_fusion, detection_3Dto2D_fusion, detection_3D_fusion, detection_2D_only, detection_3Dto2D_only, detection_3D_only = \
+            #     datafusion2Dand3D(dets_3D_camera, dets_2D, dets_3Dto2D_image, additional_info)
+            detection_2D_fusion, detection_3Dto2D_fusion, detection_3D_fusion, detection_2D_only, detection_3Dto2D_only, detection_3D_only, \
+            new_additional_info \
+                = datafusion2Dand3D(dets_3D_camera, dets_2D, dets_3Dto2D_image, additional_info)
             detection_2D_only_tlwh = np.array([convert_x1y1x2y2_to_tlwh(i) for i in detection_2D_only]) # (x1,y1,x2,y2) to (x,y,center_x,center_y)
 
+            # print('detection_2D_fusion:', len(detection_2D_fusion))
+            # print('detection_3Dto2D_fusion:', len(detection_3Dto2D_fusion))
+            # print('detection_3D_fusion:', len(detection_3D_fusion['dets_3d_fusion']))
+            # print('detection_3Dto2D_only:', detection_3Dto2D_only.shape)
+            # print('detection_3D_only:', detection_3D_only['dets_3d_only'])
+            # print('detection_2D_only:', detection_2D_only.shape)
+            # print('-' * 50)
+            
             start_time = time.time()
             # trackers = tracker.update(detection_3D_fusion, detection_2D_only_tlwh, detection_3D_only, detection_3Dto2D_only,
             #                           additional_info, calib_file_seq)
             trackers = tracker.update(detection_3D_fusion, detection_2D_only, detection_3D_only, detection_3Dto2D_only,
-                                      additional_info, calib_file_seq)
+                                      new_additional_info, calib_file_seq)
             cycle_time = time.time() - start_time
             total_time += cycle_time
 
@@ -192,8 +242,8 @@ if __name__ == '__main__':
                 for d in trackers:
                     bbox3d = d.flatten()
                     bbox3d_tmp = bbox3d[1:8]  # 3D bounding box(h,w,l,x,y,z,theta)
-                    # id_tmp = int(bbox3d[0])
-                    id_tmp = int(bbox3d[0]) - int(trackers[0].flatten()[0]) # 라벨 번호 0부터 시작하기
+                    id_tmp = int(bbox3d[0])
+                    # id_tmp = int(bbox3d[0]) - int(trackers[0].flatten()[0]) # 라벨 번호 0부터 시작하기
                     ori_tmp = bbox3d[8]
                     type_tmp = det_id2str[bbox3d[9]]
                     bbox2d_tmp_trk = bbox3d[10:14]
@@ -207,7 +257,8 @@ if __name__ == '__main__':
                                 bbox2d_tmp_trk[1],bbox2d_tmp_trk[2],bbox2d_tmp_trk[3],bbox3d_tmp[0], bbox3d_tmp[1],bbox3d_tmp[2], bbox3d_tmp[3],
                                 bbox3d_tmp[4], bbox3d_tmp[5],bbox3d_tmp[6],conf_tmp)
                         f.write(str_to_srite)
-                        show_image_with_boxes(img_0, bbox3d_tmp, image_path, color, img0_name, label, calib_file_seq,line_thickness=1)
+                        if args.save_img:
+                            show_image_with_boxes(img_0, bbox3d_tmp, image_path, color, img0_name, label, calib_file_seq,line_thickness=1)
         i += 1
         print('--------------The time it takes to process all datasets are {}s --------------'.format(total_time))
     print('--------------FPS = {} --------------'.format(total_frames/total_time))
